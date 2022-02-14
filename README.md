@@ -12,6 +12,10 @@ Backup codiMD internally.
 
 See [loop-dump.rb](https://github.com/anticpp/codimd-backup/blob/master/loop-dump.rb)
 
+## docker-compose
+
+[supergui/codimd-backup](https://hub.docker.com/repository/docker/supergui/codimd-backup)
+
 ## TODOs
 
 - Upload to S3 storage
