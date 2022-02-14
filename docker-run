@@ -6,7 +6,6 @@ PASSWORD="your-postgresql-password"
 # Test local
 sudo docker run -it --rm -w /app/ \
     -e CMD_DB_URL="postgres://codimd:${PASSWORD}@database/codimd" \
-    -e DUMP_OUTPUT_DIR=/dumps/ \
     -e DUMP_INTERVAL=20 \
     -v "$PWD":/app/ \
     -v codimd_upload-data:/home/hackmd/app/public/uploads/ \
