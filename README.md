@@ -14,7 +14,7 @@ See [loop-dump.rb](https://github.com/anticpp/codimd-backup/blob/master/loop-dum
 
 ## docker-compose
 
-[supergui/codimd-backup](https://hub.docker.com//supergui/codimd-backup)
+[supergui/codimd-backup](https://hub.docker.com/r/supergui/codimd-backup)
 
 ## TODOs
 
