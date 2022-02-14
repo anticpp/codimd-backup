@@ -1,10 +1,17 @@
 #!/bin/bash
 
-# Replace `${PASSWORD}` with postgresql password
-sudo docker run -it --rm -v "$PWD":/app/ -w /app/ \
+# Replace `PASSWORD` with postgresql password
+PASSWORD="your-postgresql-password"
+
+# Test local
+sudo docker run -it --rm -w /app/ \
     -e CMD_DB_URL="postgres://codimd:${PASSWORD}@database/codimd" \
     -e DUMP_OUTPUT_DIR=/dumps/ \
+    -e DUMP_INTERVAL=20 \
+    -v "$PWD":/app/ \
     -v codimd_upload-data:/home/hackmd/app/public/uploads/ \
     -v "$PWD"/dumps/:/dumps/ \
     --network=codimd_default \
-    supergui/codimd-backup
+    supergui/codimd-backup \
+    ruby loop-dump.rb
+

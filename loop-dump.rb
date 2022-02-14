@@ -1,7 +1,8 @@
 #!/usr/bin/ruby
-#
+
 require "logger"
 
+# Functions
 def run_cmd(cmd)
     logger = Logger.new(STDOUT)
     logger.info(cmd)
@@ -50,14 +51,17 @@ logger.info("dump_output_dir: " + dump_output_dir)
 logger.info("dump_interval: %d"%(dump_interval))
 
 # Main loop
-last_t = Time.new(0)
-now_t = Time.new
+last_t = Time.at(0)
+now_t = Time.now
 while true do
-    now_t = Time.new
+    now_t = Time.now
     eclapse = now_t.to_i - last_t.to_i
+    next_interval = dump_interval-eclapse
     
-    if eclapse<dump_interval then
-        sleep(dump_interval-eclapse)
+    if next_interval>0 then
+        logger.info(sprintf("next interval: %d seconds", next_interval))
+        logger.info("sleep until: " + (now_t+next_interval).strftime("%Y-%m-%d %k:%M:%S"))
+        sleep(next_interval)
         next
     end
     last_t = now_t
@@ -74,7 +78,7 @@ while true do
     !run_cmd(cmd) and next
 
     # Zip together
-    zip_file=sprintf("%s/codimd_%04d%02d%02d%02d%02d%02d.zip", dump_output_dir, now_t.year, now_t.month, now_t.day, now_t.hour, now_t.min, now_t.sec) 
+    zip_file=sprintf("%s/%s", dump_output_dir, now_t.strftime("%Y%m%d%k%M"))
     cmd="zip -m #{zip_file} #{dump_database_file} #{dump_upload_file}"
     !run_cmd(cmd) and next
 end
