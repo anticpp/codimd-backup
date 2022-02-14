@@ -1,0 +1,9 @@
+#!/bin/bash
+
+sudo docker run -it --rm -v "$PWD":/app/ -w /app/ \
+    -e CMD_DB_URL="postgres://codimd:password@database/codimd" \
+    -e DUMP_OUTPUT_DIR=/dumps/ \
+    -v codimd_upload-data:/home/hackmd/app/public/uploads/ \
+    -v "$PWD"/dumps/:/dumps/ \
+    --network=codimd_default \
+    codimd-backup
