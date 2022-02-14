@@ -29,11 +29,37 @@ def getenv_or_exit(name)
     return v
 end
 
+# Try load lasttime from cachefile.
+# If fail, return time at 0.
+def try_load_lasttime(cachefile)
+  logger = Logger.new(STDOUT)
+  begin
+    f = File.open(cachefile)
+    ts = f.read()
+    f.close
+  rescue
+    return Time.at(0)
+  end
+  lt = Time.at(ts.to_i)
+  logger.info(sprintf("load lasttime from cachefile: %s", lt.strftime("%Y-%m-%d %k:%M:%S")))
+  return lt
+end
+
+def flush_lasttime(cachefile, ts)
+  begin
+    File.write(cachefile, ts.to_i)
+  rescue
+    return false
+  end
+  return true
+end
+
 # Constants
 HACKMD_UPLOAD_DIR = "/home/hackmd/app/public/uploads/"
 DUMP_DATABASE_FILENAME = "codimd_postgres.tar"
 DUMP_UPLOAD_FILENAME = "codimd_upload.tar"
 DUMP_DEFAULT_INTERVAL = 60*60
+TSCACHE_FILENAME = ".ts.cache"
 
 # Global
 logger = Logger.new(STDOUT)
@@ -45,14 +71,22 @@ dump_interval = getenv_or_default('DUMP_INTERVAL', DUMP_DEFAULT_INTERVAL).to_i
 
 dump_database_file="#{dump_output_dir}/#{DUMP_DATABASE_FILENAME}"
 dump_upload_file="#{dump_output_dir}/#{DUMP_UPLOAD_FILENAME}"
+tscache_file="#{dump_output_dir}/#{TSCACHE_FILENAME}"
 
 logger.info("cmd_db_url: " + cmd_db_url)
 logger.info("dump_output_dir: " + dump_output_dir)
 logger.info("dump_interval: %d"%(dump_interval))
 
-# Main loop
-last_t = Time.at(0)
+# Load lasttime from cache
+last_t = try_load_lasttime(tscache_file)
 now_t = Time.now
+
+## last time is error, set to 0
+if last_t.to_i>now_t.to_i then
+  last_t = Time.at(0)
+end
+
+# Main loop
 while true do
     now_t = Time.now
     eclapse = now_t.to_i - last_t.to_i
@@ -65,6 +99,7 @@ while true do
         next
     end
     last_t = now_t
+    flush_lasttime(tscache_file, last_t)
     logger.info("Run dump now")
 
     # Dump postgres database
@@ -78,7 +113,7 @@ while true do
     !run_cmd(cmd) and next
 
     # Zip together
-    zip_file=sprintf("%s/%s", dump_output_dir, now_t.strftime("%Y%m%d%k%M"))
+    zip_file=sprintf("%s/codimd_%s", dump_output_dir, now_t.strftime("%Y%02m%02d%02k%02M"))
     cmd="zip -m #{zip_file} #{dump_database_file} #{dump_upload_file}"
     !run_cmd(cmd) and next
 end
