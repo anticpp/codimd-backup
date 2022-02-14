@@ -1,4 +1,16 @@
 #!/usr/bin/ruby
+#
+# ENVs:
+#   - `CMD_DB_URL`
+#      Required
+#      Example: "postgres://codimd:password123@database/codimd"
+#   - `DUMP_INTERVAL`
+#      NOT Required
+#      Default 86400 (1day)
+#   - `DUMP_OUTPUT_DIR
+#      NOT Required
+#      Default '/dumps/'
+#
 
 require "logger"
 
@@ -66,7 +78,7 @@ logger = Logger.new(STDOUT)
 
 # Get env
 cmd_db_url = getenv_or_exit('CMD_DB_URL')
-dump_output_dir = getenv_or_exit('DUMP_OUTPUT_DIR')
+dump_output_dir = getenv_or_default('DUMP_OUTPUT_DIR', "/dumps/")
 dump_interval = getenv_or_default('DUMP_INTERVAL', DUMP_DEFAULT_INTERVAL).to_i
 
 dump_database_file="#{dump_output_dir}/#{DUMP_DATABASE_FILENAME}"
