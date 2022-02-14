@@ -70,7 +70,7 @@ end
 HACKMD_UPLOAD_DIR = "/home/hackmd/app/public/uploads/"
 DUMP_DATABASE_FILENAME = "codimd_postgres.tar"
 DUMP_UPLOAD_FILENAME = "codimd_upload.tar"
-DUMP_DEFAULT_INTERVAL = 60*60
+DUMP_DEFAULT_INTERVAL = 60*60*24
 TSCACHE_FILENAME = ".ts.cache"
 
 # Global
