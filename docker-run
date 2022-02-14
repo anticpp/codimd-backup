@@ -1,7 +1,8 @@
 #!/bin/bash
 
+# Replace `${PASSWORD}` with postgresql password
 sudo docker run -it --rm -v "$PWD":/app/ -w /app/ \
-    -e CMD_DB_URL="postgres://codimd:password@database/codimd" \
+    -e CMD_DB_URL="postgres://codimd:${PASSWORD}@database/codimd" \
     -e DUMP_OUTPUT_DIR=/dumps/ \
     -v codimd_upload-data:/home/hackmd/app/public/uploads/ \
     -v "$PWD"/dumps/:/dumps/ \
