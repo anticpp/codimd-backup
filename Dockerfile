@@ -1,10 +1,9 @@
-FROM ruby:3.0
+FROM ruby:3.0-alpine
 
 WORKDIR /app/
 
-RUN apt-get update
-RUN apt-get install postgresql-client -y
-RUN apt-get install zip
+RUN apk add postgresql-client
+RUN apk add zip
 
 COPY ./loop-dump.rb ./
 

@@ -69,8 +69,8 @@ end
 HACKMD_UPLOAD_DIR = "/home/hackmd/app/public/uploads/"
 DUMP_DATABASE_FILENAME = "codimd_postgres.tar"
 DUMP_UPLOAD_FILENAME = "codimd_upload.tar"
-DUMP_DEFAULT_INTERVAL = 60*60*24
-DEFAULD_MAX_BACKUPS = 10
+DEFAULT_DUMP_INTERVAL = 60*60*24
+DEFAULT_MAX_BACKUPS = 10
 TSCACHE_FILENAME = ".ts.cache"
 
 # Global
@@ -79,7 +79,7 @@ logger = Logger.new(STDOUT)
 # Get env
 cmd_db_url = getenv_or_exit('CMD_DB_URL')
 dump_output_dir = getenv_or_default('DUMP_OUTPUT_DIR', "/dumps/")
-dump_interval = getenv_or_default('DUMP_INTERVAL', DUMP_DEFAULT_INTERVAL).to_i
+dump_interval = getenv_or_default('DUMP_INTERVAL', DEFAULT_DUMP_INTERVAL).to_i
 max_backups = getenv_or_default('MAX_BACKUPS', DEFAULT_MAX_BACKUPS).to_i
 
 dump_database_file="#{dump_output_dir}/#{DUMP_DATABASE_FILENAME}"
@@ -89,6 +89,7 @@ tscache_file="#{dump_output_dir}/#{TSCACHE_FILENAME}"
 logger.info("cmd_db_url: " + cmd_db_url)
 logger.info("dump_output_dir: " + dump_output_dir)
 logger.info("dump_interval: %d"%(dump_interval))
+logger.info("max_backups: %d"%(max_backups))
 
 # Load lasttime from cache
 last_t = try_load_lasttime(tscache_file)
@@ -108,6 +109,7 @@ while true do
     if next_interval>0 then
         logger.info(sprintf("next interval: %d seconds", next_interval))
         logger.info("sleep until: " + (now_t+next_interval).strftime("%Y-%m-%d %k:%M:%S"))
+        STDOUT.flush
         sleep(next_interval)
         next
     end
@@ -131,7 +133,7 @@ while true do
     !run_cmd(cmd) and next
 
     # Remove oldest backups
-    Dir.glob(dump_output_dir+"/*_.zip").sort_by { |f|
+    Dir.glob(dump_output_dir+"/codimd_*.zip").sort_by { |f|
       File.mtime(f)
     }.reverse.each.with_index { |f, n|
       if n<max_backups then
