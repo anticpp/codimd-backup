@@ -1,15 +1,14 @@
 #!/usr/bin/ruby
 #
 # ENVs:
-#   - `CMD_DB_URL`
-#      Required
+#   - `CMD_DB_URL`         - Required
 #      Example: "postgres://codimd:password123@database/codimd"
-#   - `DUMP_INTERVAL`
-#      NOT Required
+#   - `DUMP_INTERVAL`     - NOT Required
 #      Default 86400 (1day)
-#   - `DUMP_OUTPUT_DIR
-#      NOT Required
+#   - `DUMP_OUTPUT_DIR    - NOT Required
 #      Default '/dumps/'
+#   - `MAX_BACKUPS        - NOT Required
+#      Default 10
 #
 
 require "logger"
@@ -71,6 +70,7 @@ HACKMD_UPLOAD_DIR = "/home/hackmd/app/public/uploads/"
 DUMP_DATABASE_FILENAME = "codimd_postgres.tar"
 DUMP_UPLOAD_FILENAME = "codimd_upload.tar"
 DUMP_DEFAULT_INTERVAL = 60*60*24
+DEFAULD_MAX_BACKUPS = 10
 TSCACHE_FILENAME = ".ts.cache"
 
 # Global
@@ -80,6 +80,7 @@ logger = Logger.new(STDOUT)
 cmd_db_url = getenv_or_exit('CMD_DB_URL')
 dump_output_dir = getenv_or_default('DUMP_OUTPUT_DIR', "/dumps/")
 dump_interval = getenv_or_default('DUMP_INTERVAL', DUMP_DEFAULT_INTERVAL).to_i
+max_backups = getenv_or_default('MAX_BACKUPS', DEFAULT_MAX_BACKUPS).to_i
 
 dump_database_file="#{dump_output_dir}/#{DUMP_DATABASE_FILENAME}"
 dump_upload_file="#{dump_output_dir}/#{DUMP_UPLOAD_FILENAME}"
@@ -128,6 +129,17 @@ while true do
     zip_file=sprintf("%s/codimd_%s", dump_output_dir, now_t.strftime("%Y%02m%02d%02k%02M"))
     cmd="zip -m #{zip_file} #{dump_database_file} #{dump_upload_file}"
     !run_cmd(cmd) and next
+
+    # Remove oldest backups
+    Dir.glob(dump_output_dir+"/*_.zip").sort_by { |f|
+      File.mtime(f)
+    }.reverse.each.with_index { |f, n|
+      if n<max_backups then
+        next
+      end
+      logger.info("Removing old backup "+f)
+      File.delete(f)
+    }
 end
 
 # Upload to S3 storage
