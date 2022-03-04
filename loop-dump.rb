@@ -1,17 +1,27 @@
 #!/usr/bin/ruby
 #
 # ENVs:
-#   - `CMD_DB_URL`         - Required
-#      Example: "postgres://codimd:password123@database/codimd"
-#   - `DUMP_INTERVAL`     - NOT Required
-#      Default 86400 (1day)
-#   - `DUMP_OUTPUT_DIR    - NOT Required
-#      Default '/dumps/'
-#   - `MAX_BACKUPS        - NOT Required
-#      Default 10
+#   -------------------------------------------------------------------------------------------------------------------
+#   |      Name              | Required?  | Default value |           Intro                                           |
+#   -------------------------------------------------------------------------------------------------------------------
+#   | CMD_DB_URL             |   YES      |    ""         | "postgres://codimd:password123@database/codimd"           |
+#   -------------------------------------------------------------------------------------------------------------------
+#   | DUMP_INTERVAL          |   NOT      |    86400      | Seconds                                                   |
+#   -------------------------------------------------------------------------------------------------------------------
+#   | DUMP_OUTPUT_DIR        |   NOT      |    /dumps/    |                                                           |
+#   -------------------------------------------------------------------------------------------------------------------
+#   | MAX_BACKUPS            |   NOT      |    10         | Keep the most recent backups,                             |
+#   |                        |            |               | old ones will be deleted.                                 |
+#   -------------------------------------------------------------------------------------------------------------------
+#   | CLOUD_STORAGE_DSN      |   NOT      |    ""         | Specify cloud storage to upload backups.                  |
+#   |                        |            |               | Format:                                                   |
+#   |                        |            |               |  "aliyun://${KEYID}:${KEYSECRET}@${ENDPOINT}/${BUCKET}"   |
+#   -------------------------------------------------------------------------------------------------------------------
 #
 
+
 require "logger"
+require_relative "aliyun/oss"
 
 # Functions
 def run_cmd(cmd)
@@ -22,7 +32,6 @@ def run_cmd(cmd)
 end
 
 def getenv_or_default(name, default)
-    logger = Logger.new(STDOUT)
     v=ENV[name]
     if v then
         return v
@@ -38,6 +47,10 @@ def getenv_or_exit(name)
         exit
     end
     return v
+end
+
+def true?(obj) 
+  obj.to_s.downcase == "true"
 end
 
 # Try load lasttime from cachefile.
@@ -73,6 +86,9 @@ DEFAULT_DUMP_INTERVAL = 60*60*24
 DEFAULT_MAX_BACKUPS = 10
 TSCACHE_FILENAME = ".ts.cache"
 
+## "aliyun://${KEYID}:${KEYSECRET}@${ENDPOINT}/${BUCKET}"
+CS_DSN_PATTERN = /aliyun\:\/\/([\w=]*)\:([\w=]*)\@([\w\-\._]*)\/([\w\-_]*)/ 
+
 # Global
 logger = Logger.new(STDOUT)
 
@@ -86,10 +102,38 @@ dump_database_file="#{dump_output_dir}/#{DUMP_DATABASE_FILENAME}"
 dump_upload_file="#{dump_output_dir}/#{DUMP_UPLOAD_FILENAME}"
 tscache_file="#{dump_output_dir}/#{TSCACHE_FILENAME}"
 
+# Cloud storage
+cs_on = false
+cs_dsn = ""
+cs_access_key_id = ""
+cs_access_key_secret = ""
+cs_endpoint = ""
+cs_bucket_name = ""
+
+cs_dsn = getenv_or_default("CLOUD_STORAGE_DSN", "")
+if !cs_dsn.empty? then
+  if ! CS_DSN_PATTERN =~ cs_dsn then
+    logger.error("CLOUD_STORAGE_DSN error: #{CLOUD_STORAGE_DSN}")
+    logger.error("PATTERN: #{CS_DSN_PATTERN}")
+    logger.error("Please check your DSN, example: \"aliyun://abc:def@oss/yyyy\". ")
+  else
+    cs_on = true
+    regd = Regexp.last_match
+    cs_access_key_id, cs_access_key_secret, cs_endpoint, cs_bucket_name = regd[1], regd[2], regd[3], regd[4]
+  end
+end
+
 logger.info("cmd_db_url: " + cmd_db_url)
 logger.info("dump_output_dir: " + dump_output_dir)
 logger.info("dump_interval: %d"%(dump_interval))
 logger.info("max_backups: %d"%(max_backups))
+
+if cs_on then
+  logger.info("Cloud storage is ON.")
+  logger.info("Access_key_id: #{cs_access_key_id}, access_key_secret: #{cs_access_key_secret}, bucket_name: #{bucket_name}")
+else
+  logger.info("Cloud storage is OFF.")
+end
 
 # Load lasttime from cache
 last_t = try_load_lasttime(tscache_file)
@@ -119,16 +163,17 @@ while true do
 
     # Dump postgres database
     logger.info("dump database ...")
-    cmd="pg_dump --dbname=#{cmd_db_url} -F t -f #{dump_database_file}"
+    cmd = "pg_dump --dbname=#{cmd_db_url} -F t -f #{dump_database_file}"
     !run_cmd(cmd) and next
 
     # Dump uploads
     logger.info("tar upload ...")
-    cmd="tar -zcvf #{dump_upload_file} -C #{HACKMD_UPLOAD_DIR} ."
+    cmd = "tar -zcvf #{dump_upload_file} -C #{HACKMD_UPLOAD_DIR} ."
     !run_cmd(cmd) and next
 
     # Zip together
-    zip_file=sprintf("%s/codimd_%s", dump_output_dir, now_t.strftime("%Y%02m%02d%02k%02M"))
+    zip_filename = sprintf("codimd_%s", now_t.strftime("%Y%02m%02d%02k%02M"))
+    zip_filepath = "#{dump_output_dir}/#{zip_filename}"
     cmd="zip -m #{zip_file} #{dump_database_file} #{dump_upload_file}"
     !run_cmd(cmd) and next
 
@@ -142,10 +187,29 @@ while true do
       logger.info("Removing old backup "+f)
       File.delete(f)
     }
+
+    # Upload to cloud storage
+    if cs_on then
+      logger.info("Uploading to cloud storage: #{cs_endpoint}")
+
+      client = Aliyun::OSS::Client.new(cs_endpoint,
+                cs_access_key_id,
+                cs_access_key_secret)
+
+      t0 = time.now
+      client.put_object_from_file(cs_bucket_name, zip_filename, zip_filepath) { |err, message|
+        t1 = time.now
+        if err!=Aliyun::OSS::OK then
+          logger.error("Upload error: #{err}, message: #{message}"
+        else
+          logger.info("Success")
+          logger.info("Eclapse: #{t1-t0} seconds")
+        end
+      }
+
+    end
 end
 
-# Upload to S3 storage
-# TODO
 
 
 
