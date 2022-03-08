@@ -1,6 +1,6 @@
 #!/bin/bash
 # 
-# PASSWORD="you-postgresql-password" ./docker-run
+# PASSWORD="your-postgresql-password" ./docker-run
 
 # Using local loop-dump.rb
 sudo docker run -it --rm -w /app/ \

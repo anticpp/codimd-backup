@@ -112,14 +112,14 @@ cs_bucket_name = ""
 
 cs_dsn = getenv_or_default("CLOUD_STORAGE_DSN", "")
 if !cs_dsn.empty? then
-  if ! CS_DSN_PATTERN =~ cs_dsn then
-    logger.error("CLOUD_STORAGE_DSN error: #{CLOUD_STORAGE_DSN}")
-    logger.error("PATTERN: #{CS_DSN_PATTERN}")
-    logger.error("Please check your DSN, example: \"aliyun://abc:def@oss/yyyy\". ")
-  else
+  if CS_DSN_PATTERN =~ cs_dsn then
     cs_on = true
     regd = Regexp.last_match
     cs_access_key_id, cs_access_key_secret, cs_endpoint, cs_bucket_name = regd[1], regd[2], regd[3], regd[4]
+  else
+    logger.error("CLOUD_STORAGE_DSN error: #{CLOUD_STORAGE_DSN}")
+    logger.error("PATTERN: #{CS_DSN_PATTERN}")
+    logger.error("Please check your DSN, example: \"aliyun://abc:def@oss.exmple.com/yyyy\". ")
   end
 end
 
@@ -130,7 +130,7 @@ logger.info("max_backups: %d"%(max_backups))
 
 if cs_on then
   logger.info("Cloud storage is ON.")
-  logger.info("Access_key_id: #{cs_access_key_id}, access_key_secret: #{cs_access_key_secret}, bucket_name: #{bucket_name}")
+  logger.info("Access_key_id: #{cs_access_key_id}, access_key_secret: #{cs_access_key_secret}, bucket_name: #{cs_bucket_name}")
 else
   logger.info("Cloud storage is OFF.")
 end
@@ -172,9 +172,9 @@ while true do
     !run_cmd(cmd) and next
 
     # Zip together
-    zip_filename = sprintf("codimd_%s", now_t.strftime("%Y%02m%02d%02k%02M"))
+    zip_filename = sprintf("codimd_%s.zip", now_t.strftime("%Y%02m%02d%02k%02M"))
     zip_filepath = "#{dump_output_dir}/#{zip_filename}"
-    cmd="zip -m #{zip_file} #{dump_database_file} #{dump_upload_file}"
+    cmd="zip -m #{zip_filepath} #{dump_database_file} #{dump_upload_file}"
     !run_cmd(cmd) and next
 
     # Remove oldest backups
@@ -196,17 +196,16 @@ while true do
                 cs_access_key_id,
                 cs_access_key_secret)
 
-      t0 = time.now
+      t0 = Time.now
       client.put_object_from_file(cs_bucket_name, zip_filename, zip_filepath) { |err, message|
-        t1 = time.now
+        t1 = Time.now
         if err!=Aliyun::OSS::OK then
-          logger.error("Upload error: #{err}, message: #{message}"
+          logger.error("Upload error: #{err}, message: #{message}")
         else
           logger.info("Success")
           logger.info("Eclapse: #{t1-t0} seconds")
         end
       }
-
     end
 end
 
