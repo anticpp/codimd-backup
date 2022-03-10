@@ -8,13 +8,13 @@ Backup codiMD periodically.
 2. Tar codimd upload file to `tar`.
 3. Zip together.
 
-Dump to directory `/dumps/` every `86400 seconds(1 day)`, keep the most recent `10 backups`. You can change some default behaviors via ENVs.
+Dump to directory `/dumps/` every `86400 seconds(1 day)`, keep the most recent `10 backups`. You can change default behaviors via ENVs.
 
 ## ENVs
 
 See [loop-dump.rb](https://github.com/anticpp/codimd-backup/blob/master/loop-dump.rb)
 
-## docker
+## Docker Hub
 
 [supergui/codimd-backup](https://hub.docker.com/r/supergui/codimd-backup).
 
@@ -22,4 +22,4 @@ See `docker-run`.
 
 ## TODOs
 
-- Upload to S3 storage.
+- [X] Upload to S3 storage.
